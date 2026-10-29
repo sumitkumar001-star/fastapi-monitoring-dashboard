@@ -1,0 +1,73 @@
+groups:
+  - name: api-alerts
+    rules:
+      - alert: ApiDown
+        expr: probe_success{job="blackbox-health"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "API is DOWN"
+          description: "/health probe is failing. Check: docker compose ps, docker compose logs api."
+
+      - alert: ServiceHealthFailure
+        expr: up{job="fastapi"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus cannot scrape the FastAPI service"
+          description: "Service health failure: target api:8000 is unreachable. Container crashed or network issue."
+
+      - alert: HighResponseTime
+        expr: |
+          sum by (handler) (rate(http_request_duration_seconds_sum{handler!="/metrics"}[1m]))
+          /
+          sum by (handler) (rate(http_request_duration_seconds_count{handler!="/metrics"}[1m]))
+          > 3
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow response on {{ $labels.handler }}"
+          description: "Average response time of {{ $labels.handler }} is {{ $value | humanizeDuration }} (threshold 3s). Possible timeout / slow dependency."
+
+      - alert: Http500Errors
+        expr: sum by (handler) (increase(http_requests_total{status=~"5.."}[1m])) > 0
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 500 errors on {{ $labels.handler }}"
+          description: "Server error detected. Open logs: docker compose logs api (traceback shows root cause)."
+
+      - alert: HighFailureRate
+        expr: |
+          sum(rate(http_requests_total{status=~"4..|5.."}[1m]))
+          /
+          sum(rate(http_requests_total[1m]))
+          > 0.10
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Failure rate above 10%"
+          description: "Current failure rate is {{ $value | humanizePercentage }}."
+
+      - alert: AuthenticationFailures
+        expr: sum(increase(http_requests_total{status=~"401|403"}[1m])) > 3
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Authentication errors (401/403) detected"
+          description: "Invalid or missing API key being used. Check client credentials / possible brute force."
+
+      - alert: RateLimitExceeded
+        expr: sum(increase(http_requests_total{status="429"}[1m])) > 3
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP 429 Rate limit exceeded"
+          description: "A client is sending too many requests. Check client retry logic / raise limits."
