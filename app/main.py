@@ -8,11 +8,11 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger("monitoring-demo")
+logger = logging.getLogger("monitoring")
 
 API_KEY = os.getenv("API_KEY", "secret123")
 
-app = FastAPI(title="API Monitoring Demo", version="1.0.0")
+app = FastAPI(title="API Monitoring", version="1.0.0")
 
 USERS = [
     {"id": 1, "name": "Rohan", "email": "rohan@example.com"},
